@@ -21,6 +21,8 @@ using namespace geometrycentral::surface;
 std::unique_ptr<HalfedgeMesh> mesh;
 std::unique_ptr<VertexPositionGeometry> geometry;
 
+typedef uint64_t ind_t;
+
 // Polyscope visualization handle, to quickly add data to the surface
 polyscope::SurfaceMesh* psMesh;
 
@@ -177,6 +179,53 @@ void vectorTransport() {
   psVec->setEnabled(true);
 }
 
+void exportVectorTransport() {
+  if (solver == nullptr) {
+    solver.reset(new VectorHeatMethodSolver(*geometry, tCoef));
+  }
+
+  if (sourcePoints.size() == 0) {
+    polyscope::warning("no source points set");
+    return;
+  }
+
+  std::vector<std::tuple<SurfacePoint, Vector2>> points;
+  for (SourceVert& s : sourcePoints) {
+    points.emplace_back(s.vertex, Vector2::fromAngle(s.vectorAngleRad) * s.vectorMag);
+  }
+  VertexData<Vector2> vectorExtension = solver->transportTangentVectors(points);
+  VertexData<Vector3> vertices = geometry->vertexPositions;
+  const auto tangentSpace = psMesh->vertexTangentSpaces;
+
+  std::ofstream ofs("./vector_transport_export.csv", std::ofstream::out);
+  ofs << vertices.size() << "\n";
+  assert(vertices.size() == vectorExtension.size());
+  for(ind_t i = 0; i < vertices.size(); i++)
+  {
+    const auto& vertex = vertices[i];
+    ofs << vertex[0] << " " << vertex[1] << " " << vertex[2] << "\n";
+  }
+
+  //ofs << "\n";
+
+  for(ind_t i = 0; i < tangentSpace.size(); i++)
+  {
+    const auto& tangent_vecs = tangentSpace[i];
+    ofs << tangent_vecs[0].x << " " << tangent_vecs[0].y << " " <<  tangent_vecs[0].z << " " 
+    << tangent_vecs[1].x << " " << tangent_vecs[1].y << " " <<  tangent_vecs[1].z  << "\n";
+  }
+
+  //ofs << "\n";
+  //ofs << logmap.size() << "\n"; //Same as vertices
+
+  for(ind_t i = 0; i < vectorExtension.size(); i++)
+  {
+    const auto& point = vectorExtension[i];
+    ofs << point[0] << " " << point[1] << "\n";
+  }
+  
+}
+
 void computeLogMap() {
   if (solver == nullptr) {
     solver.reset(new VectorHeatMethodSolver(*geometry, tCoef));
@@ -191,6 +240,38 @@ void computeLogMap() {
 
   auto psLogmap = psMesh->addLocalParameterizationQuantity("logmap", logmap);
   psLogmap->setEnabled(true);
+}
+
+//TODO: DRY
+void exportLogMap() {
+  if (solver == nullptr) {
+    solver.reset(new VectorHeatMethodSolver(*geometry, tCoef));
+  }
+  if (sourcePoints.size() == 0) {
+    polyscope::warning("must select a source");
+    return;
+  }
+
+  Vertex sourceV = sourcePoints[0].vertex;
+  VertexData<Vector2> logmap = solver->computeLogMap(sourceV);
+  VertexData<Vector3> vertices = geometry->vertexPositions;
+  std::ofstream ofs("./logmap_export.csv", std::ofstream::out);
+  ofs << vertices.size() << "\n";
+  assert(vertices.size() == logmap.size());
+  for(ind_t i = 0; i < vertices.size(); i++)
+  {
+    const auto& vertex = vertices[i];
+    ofs << vertex[0] << " " << vertex[1] << " " << vertex[2] << "\n";
+  }
+
+  ofs << "\n";
+  //ofs << logmap.size() << "\n"; //Same as vertices
+
+  for(ind_t i = 0; i < logmap.size(); i++)
+  {
+    const auto& point = logmap[i];
+    ofs << point[0] << " " << point[1] << "\n";
+  }
 }
 
 
@@ -350,6 +431,16 @@ void myCallback() {
 
       if (ImGui::Button("compute log map")) {
         computeLogMap();
+      }
+
+      if (ImGui::Button("export log map")) {
+        // std::cout << "Test" << std::endl; //computeLogMap();
+        exportLogMap();
+      }
+
+      if (ImGui::Button("export vector transport")) {
+        // std::cout << "Test" << std::endl; //computeLogMap();
+        exportVectorTransport();
       }
 
 

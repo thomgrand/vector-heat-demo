@@ -7,6 +7,10 @@ See also the geometry-central documentation for [the Vector Heat Method](http://
 
 ![demo git](https://github.com/nmwsharp/vector-heat-demo/blob/master/vector_heat_demo.gif)
 
+## Branch Note
+
+This branch additionally enables the export of the transported vector(s) and the logmap, found on the right side of the GUI. The results will be written in csv-files. [load_exported_vector_transport.py](load_exported_vector_transport.py) demonstrates how to import the transported vector(s) in numpy with an optional visualization in [pyvista](https://www.pyvista.org).
+
 ### Building and running
 
 ```
